@@ -1,0 +1,25 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '6.0.0'
+    id 'java'
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'AircrackClusterClient'
+        )
+    }
+}
+
+group 'xyz.kokoseij'
+version '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+shadowJar
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}

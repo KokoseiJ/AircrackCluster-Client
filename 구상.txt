@@ -1,0 +1,13 @@
+1. args[0], args[1]에 주소랑 포트 받아서 소켓 연결
+2. 벤치 5초 한다음에 결과만 따로 보내기
+3. `BENCH_RESULT OK` 받기
+
+4. `FILE_BYTE OK` 보내고 바이트수 받기
+5. `FILE_READY OK` 보내고 cap파일 받기
+6. 바이트 일치하면 `FILE_RECV OK` 보내기
+6-1. `RETRY` 보낼 시 4번부터, `DROP` 받으면 프로그램 살해하기
+
+7. `INF_READY OK` 보내고 ESSID,BSSID 스트링 받기
+8. `INF_RECV OK` 보내기
+
+9. 
