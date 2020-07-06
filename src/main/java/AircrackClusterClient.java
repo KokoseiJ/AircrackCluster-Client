@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.Map;
 import java.util.Scanner;
 
 public class AircrackClusterClient {
@@ -55,16 +54,14 @@ public class AircrackClusterClient {
         System.out.println("Sending FILE_BYTE OK");
         writer.println("FILE_BYTE OK");
         fileLength = reader.nextLong();
-        System.out.println(fileLength);
+        System.out.println("FileSize: " + fileLength + "bytes.");
         writer.println("FILE_READY OK");
 
         while(receivedSizeAll < fileLength) {
-            System.out.println(receivedSize);
             if((receivedSize += socketInputStream.read(buffer)) == -1) break;
             receivedSizeAll += receivedSize;
             fileOutputStream.write(buffer, 0, receivedSize);
         }
-        fileOutputStream.close();
 
         if(receivedSize != fileLength) {
             writer.println("FILE_RECV FAIL");
@@ -85,7 +82,7 @@ public class AircrackClusterClient {
 
     //public static Map<String, String> receiveInfo(Socket socket) {}
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         InetAddress socketAddr;
         int socketPort;
         Socket socket;
@@ -151,5 +148,6 @@ public class AircrackClusterClient {
             System.exit(1);
         }
         //TODO: GET BSSID & ESSID;
+        socket.close();
     }
 }
