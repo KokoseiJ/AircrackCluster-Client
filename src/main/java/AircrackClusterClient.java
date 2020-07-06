@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.Map;
 import java.util.Scanner;
 
 public class AircrackClusterClient {
@@ -47,7 +48,8 @@ public class AircrackClusterClient {
         FileOutputStream fileOutputStream = new FileOutputStream(file);
 
         long fileLength;
-        long receivedSize;
+        int receivedSize = 0;
+        long receivedSizeAll = 0;
         byte[] buffer = new byte[4096];
 
         System.out.println("Sending FILE_BYTE OK");
@@ -56,18 +58,14 @@ public class AircrackClusterClient {
         System.out.println(fileLength);
         writer.println("FILE_READY OK");
 
-        int len;
-        while ((len = socketInputStream.read(buffer)) != -1) {
-            fileOutputStream.write(buffer, 0, len);
-        }
-
-        /*while(receivedSize < fileLength) {
+        while(receivedSizeAll < fileLength) {
             System.out.println(receivedSize);
             if((receivedSize += socketInputStream.read(buffer)) == -1) break;
-            fileOutputStream.write(buffer);
-        }*/
+            receivedSizeAll += receivedSize;
+            fileOutputStream.write(buffer, 0, receivedSize);
+        }
+        fileOutputStream.close();
 
-        receivedSize = file.length();
         if(receivedSize != fileLength) {
             writer.println("FILE_RECV FAIL");
             System.err.print("Failed to receive file. File has been corrupted. ");
@@ -79,9 +77,13 @@ public class AircrackClusterClient {
             else if(reader.next().equals("DROP"))
                 return null;
         }
+        writer.println("FILE_RECV OK");
+
         System.out.println("Captured file successfully received!");
         return file;
     }
+
+    //public static Map<String, String> receiveInfo(Socket socket) {}
 
     public static void main(String[] args) {
         InetAddress socketAddr;
