@@ -1,7 +1,11 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.Buffer;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AircrackClusterClient {
     public static double runAircrackBench() throws IOException, InterruptedException {
@@ -12,7 +16,8 @@ public class AircrackClusterClient {
         String[] aircrackResultSplit;
         String aircrackLastResult;
 
-        if(System.getProperty("os.name").equalsIgnoreCase("Linux")) aircrack = new ProcessBuilder("aircrack-ng", "-S", "-Z", "5").start();
+        if(System.getProperty("os.name").equalsIgnoreCase("Linux"))
+            aircrack = new ProcessBuilder("aircrack-ng", "-S", "-Z", "5").start();
         else aircrack = new ProcessBuilder("C:\\aircrack-ng\\bin\\aircrack-ng.exe", "-S", "-Z", "5").start();
 
         aircrackInputStream = aircrack.getInputStream();
@@ -58,10 +63,11 @@ public class AircrackClusterClient {
         writer.println("FILE_READY OK");
 
         while(receivedSizeAll < fileLength) {
-            if((receivedSize += socketInputStream.read(buffer)) == -1) break;
+            if((receivedSize = socketInputStream.read(buffer)) == -1) break;
             receivedSizeAll += receivedSize;
             fileOutputStream.write(buffer, 0, receivedSize);
         }
+        fileOutputStream.close();
 
         if(receivedSize != fileLength) {
             writer.println("FILE_RECV FAIL");
@@ -80,14 +86,72 @@ public class AircrackClusterClient {
         return file;
     }
 
-    //public static Map<String, String> receiveInfo(Socket socket) {}
+    public static String[] receiveInfo(Socket socket) throws IOException {
+        PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-    public static void main(String[] args) throws IOException {
+        String receivedValue;
+
+        System.out.println("Sending INF_READY OK");
+        writer.println("INF_READY OK");
+        System.out.println("Getting info");
+
+        receivedValue = reader.readLine();
+
+        return receivedValue.split(",");
+    }
+
+    public static String[] runAircrack(File capFile, File dictFile, String bssId, String essId)
+            throws IOException, InterruptedException {
+        String aircrackPath;
+        Process aircrack;
+        StringBuffer stringBuffer;
+        BufferedReader bufferedReader;
+        String buffer;
+        String resultString;
+        Pattern foundPattern, notFoundPattern;
+
+        foundPattern = Pattern.compile("KEY FOUND! \\[ (.+?) ]");
+        notFoundPattern = Pattern.compile("KEY NOT FOUND");
+
+        if(System.getProperty("os.name").equalsIgnoreCase("Linux"))
+            aircrackPath = "aircrack-ng";
+        else aircrackPath = "C:\\aircrack-ng\\bin\\aircrack-ng.exe";
+        aircrack = new ProcessBuilder(
+                aircrackPath,
+                "-b", bssId,
+                "-e", essId,
+                "-w", dictFile.getAbsolutePath(),
+                capFile.getAbsolutePath()
+        ).start();
+
+        stringBuffer = new StringBuffer();
+        bufferedReader = new BufferedReader(new InputStreamReader(aircrack.getInputStream()));
+
+        while((buffer = bufferedReader.readLine()) != null) {
+            stringBuffer.append(buffer);
+        }
+
+        Matcher matcher = foundPattern.matcher(stringBuffer.toString());
+        System.out.println(matcher.find());
+        System.out.println(matcher.group(1));
+
+        return null;
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+
+        runAircrack(new File("capFile.cap"), new File("testdict_short"), "00:07:89:56:3a:56", "olleh_WiFi_3A53");
+        System.exit(0);
+
         InetAddress socketAddr;
         int socketPort;
         Socket socket;
 
         double benchResult;
+
+        String[] ids;
+        String bssId, essId;
 
         try {
             socketAddr = InetAddress.getByName(args[0]);
@@ -147,7 +211,19 @@ public class AircrackClusterClient {
             e.printStackTrace();
             System.exit(1);
         }
-        //TODO: GET BSSID & ESSID;
+
+        try {
+            System.out.println("Receiving bss/essid...");
+            ids = receiveInfo(socket);
+            bssId = ids[0];
+            essId = ids[1];
+            System.out.println(bssId + ", " + essId);
+        } catch(IOException e) {
+            System.err.println("An error has been occurred while receiving info.");
+            e.printStackTrace();
+            System.exit(1);
+        }
+
         socket.close();
     }
 }

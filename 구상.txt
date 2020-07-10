@@ -7,7 +7,13 @@
 6. 바이트 일치하면 `FILE_RECV OK` 보내기
 6-1. `RETRY` 보낼 시 4번부터, `DROP` 받으면 프로그램 살해하기
 
-7. `INF_READY OK` 보내고 ESSID,BSSID 스트링 받기
+7. `INF_READY OK` 보내고 BSSID,ESSID 스트링 받기
 8. `INF_RECV OK` 보내기
 
-9. 
+9. `FILE_BYTE OK` 보내고 바이트수 받기
+10. `FILE_READY OK` 보내고 사전파일 받기
+11. 바이트 일치하면 `FILE_RECV OK` 보내기
+11-1. `RETRY` 보낼 시 9번부터, `DROP` 받으면 프로그램 죽여버리기
+
+12. 존1나게 돌리기
+13. 
