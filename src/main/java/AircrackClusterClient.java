@@ -67,7 +67,7 @@ public class AircrackClusterClient {
         }
         fileOutputStream.close();
 
-        if(receivedSize != fileLength) {
+        if(receivedSizeAll != fileLength) {
             writer.println("FILE_RECV FAIL");
             System.err.print("Failed to receive file. File has been corrupted. ");
             if(reader.next().equals("RETRY")) {
@@ -114,6 +114,7 @@ public class AircrackClusterClient {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     resBuilder.append(line);
+                    System.out.println(line);
                 }
             } catch(IOException e) {
                 e.printStackTrace();
@@ -177,6 +178,8 @@ public class AircrackClusterClient {
         socketWriter.println("DICT_SIZE OK");
         lines = Integer.parseInt(socketReader.readLine());
 
+        System.out.println(lines);
+
         thread = new StreamGetter(aircrack.getInputStream());
         thread.start();
 
@@ -185,11 +188,11 @@ public class AircrackClusterClient {
         for (i = 0; i < lines; i++) {
             buffer = socketReader.readLine();
             aircrackWriter.println(buffer);
+            //System.out.println(buffer);
         }
         aircrackWriter.close();
 
         aircrack.waitFor();
-        thread.join();
 
         result = thread.getResult();
 
