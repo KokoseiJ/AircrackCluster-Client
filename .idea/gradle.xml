@@ -8,7 +8,7 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="/mnt/d/AircrackCluster-Client" />
+            <option value="$PROJECT_DIR$" />
           </set>
         </option>
         <option name="useQualifiedModuleNames" value="true" />
