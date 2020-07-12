@@ -121,7 +121,7 @@ public class AircrackClusterClient {
                     //System.out.println("게터: 바이트스트림에 박기");
                     byteStream.write(buffer, 0, readBytes);
                     //System.out.println("게터: 인풋스트림에서 읽기");
-                    System.out.print(new String(buffer, 0, readBytes));
+                    //System.out.print(new String(buffer, 0, readBytes));
                 }
             } catch(IOException e) {
                 e.printStackTrace();
