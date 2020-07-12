@@ -35,9 +35,8 @@ public class AircrackClusterClient {
         BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
         writer.println("BENCH OK," + benchResult.intValue());
-        System.out.println("Sent bench, waiting for the response...");
+        System.out.print("Sending bench result, waiting for the response... ");
         String serverResponse = reader.readLine();
-        System.out.println(serverResponse);
         return serverResponse.equals("BENCH_RESULT OK");
     }
 
@@ -50,14 +49,13 @@ public class AircrackClusterClient {
         FileOutputStream fileOutputStream = new FileOutputStream(file);
 
         long fileLength;
-        int receivedSize = 0;
+        int receivedSize;
         long receivedSizeAll = 0;
         byte[] buffer = new byte[4096];
 
-        System.out.println("Sending FILE_BYTE OK");
         writer.println("FILE_BYTE OK");
         fileLength = reader.nextLong();
-        System.out.println("FileSize: " + fileLength + "bytes.");
+        System.out.println("FileSize: " + fileLength + "byte.");
         writer.println("FILE_READY OK");
 
         while(receivedSizeAll < fileLength) {
@@ -80,7 +78,7 @@ public class AircrackClusterClient {
         }
         writer.println("FILE_RECV OK");
 
-        System.out.println("Captured file successfully received!");
+        System.out.println("Captured file successfully received!\n");
         return file;
     }
 
@@ -90,10 +88,7 @@ public class AircrackClusterClient {
 
         String receivedValue;
 
-        System.out.println("Sending INF_READY OK");
         writer.println("INF_READY OK");
-        System.out.println("Getting info");
-
         receivedValue = reader.readLine();
 
         return receivedValue.split(",");
@@ -102,7 +97,6 @@ public class AircrackClusterClient {
     public static class StreamGetter extends Thread {
         InputStream inputStream;
         ByteArrayOutputStream byteStream;
-        //StringBuilder resBuilder;
 
         public StreamGetter(InputStream inputStream) {
             this.inputStream = inputStream;
@@ -113,15 +107,8 @@ public class AircrackClusterClient {
                 byteStream = new ByteArrayOutputStream();
                 byte[] buffer = new byte[4096];
                 int readBytes;
-                //BufferedReader reader = new BufferedReader(new InputStreamReader(this.inputStream));
-                //resBuilder = new StringBuilder();
-                //String line;
-                //System.out.println("게터: 읽기시작");
                 while ((readBytes = this.inputStream.read(buffer)) != -1) {
-                    //System.out.println("게터: 바이트스트림에 박기");
                     byteStream.write(buffer, 0, readBytes);
-                    //System.out.println("게터: 인풋스트림에서 읽기");
-                    //System.out.print(new String(buffer, 0, readBytes));
                 }
             } catch(IOException e) {
                 e.printStackTrace();
@@ -149,23 +136,8 @@ public class AircrackClusterClient {
                 capFile.getAbsolutePath()
         ).start();
 
-        System.out.println("Aircrack started");
-
+        System.out.println("Cracking...");
         return aircrack;
-
-        /*
-        foundPattern = Pattern.compile("KEY FOUND! \\[ (.+?) ]");
-        notFoundPattern = Pattern.compile("KEY NOT FOUND");
-
-        stringBuffer = new StringBuffer();
-        bufferedReader = new BufferedReader(new InputStreamReader(aircrack.getInputStream()));
-
-        while((buffer = bufferedReader.readLine()) != null) {
-            stringBuffer.append(buffer);
-        }
-
-        return null;
-        */
     }
 
     public static String runAircrackWithDataFromPipe(Socket socket, Process aircrack)
@@ -174,7 +146,7 @@ public class AircrackClusterClient {
         BufferedReader socketReader = new BufferedReader(new InputStreamReader(socketStream));
         PrintWriter socketWriter = new PrintWriter(socket.getOutputStream(), true);
         PrintWriter aircrackWriter = new PrintWriter(aircrack.getOutputStream(), true);
-        Pattern foundPattern, notFoundPattern;
+        Pattern foundPattern;
         Matcher matcher;
         StreamGetter thread;
         String buffer, result;
@@ -182,11 +154,8 @@ public class AircrackClusterClient {
 
         foundPattern = Pattern.compile(".*?KEY FOUND! \\[ (.*?) ].*?");
 
-        System.out.println("dict_size ok");
         socketWriter.println("DICT_SIZE OK");
         lines = Integer.parseInt(socketReader.readLine());
-
-        System.out.println(lines);
 
         thread = new StreamGetter(aircrack.getInputStream());
         thread.start();
@@ -194,21 +163,14 @@ public class AircrackClusterClient {
         socketWriter.println("DICT_READY OK");
 
         for (i = 0; i < lines; i++) {
-            //System.out.println("메인메소드: 소켓에서 받기");
             buffer = socketReader.readLine();
-            //System.out.print(buffer + "\r");
-            //System.out.println("메인메소드: 에어크랙에 쓰기");
             aircrackWriter.println(buffer);
         }
         aircrackWriter.close();
-        //System.out.println("\nbuffer closed");
 
         aircrack.waitFor();
 
         result = thread.getResult();
-        //result = "KEY FOUND! [ 고양이키우고싶노 ]";
-
-        System.out.println(result);
 
         matcher = foundPattern.matcher(result);
         if(matcher.matches()) return matcher.group(1);
@@ -256,7 +218,7 @@ public class AircrackClusterClient {
             return;
         }
         try {
-            System.out.println("Creating socket...");
+            System.out.println("Creating socket...\n");
             socket = new Socket(socketAddr, socketPort);
         } catch(IOException e) {
             System.err.println("Failed to create a socket.");
@@ -266,9 +228,9 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Running bench...");
+            System.out.print("Running bench... ");
             benchResult = runAircrackBench();
-            System.out.println(benchResult);
+            System.out.println(benchResult + " k/s");
         } catch(IOException | InterruptedException e) {
             System.err.println("Failed to get Benchmark result.");
             e.printStackTrace();
@@ -277,12 +239,12 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Sending bench result...");
             if (!sendBenchResult(socket, benchResult)) {
                 System.err.println("Server has returned unexpected value.");
                 System.exit(1);
                 return;
             }
+            System.out.println("OK\n");
         } catch(IOException e) {
             System.err.println("An error has been occurred while sending Benchmark result.");
             e.printStackTrace();
@@ -304,11 +266,11 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Receiving bss/essid...");
+            System.out.println("Receiving AP information...");
             ids = receiveInfo(socket);
             bssId = ids[0];
             essId = ids[1];
-            System.out.println(bssId + ", " + essId);
+            System.out.println("BSSID: " + bssId + ", " + "ESSID: " + essId);
         } catch(IOException e) {
             System.err.println("An error has been occurred while receiving info.");
             e.printStackTrace();
@@ -316,17 +278,19 @@ public class AircrackClusterClient {
             return;
         }
 
-        int count = 0;
+        System.out.println("All requirements are transferred Successfully!\n");
 
+        int count = 0;
         do {
             count++;
+            System.out.println("Receiving dictionary file...");
             System.out.print("Trying " + count + "... ");
             aircrack = runAircrack(capFile, bssId, essId);
             password = runAircrackWithDataFromPipe(socket, aircrack);
             if(password == null)
-                System.out.println("Failed.");
+                System.out.println("Result: failed.\n");
             else
-                System.out.println("Success!\nPassword: " + password);
+                System.out.println("Success!\nPassword: " + password + "\n");
         } while(!sendKey(socket, password));
         socket.close();
     }
