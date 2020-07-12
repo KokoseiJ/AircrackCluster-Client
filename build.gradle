@@ -19,7 +19,7 @@ repositories {
 }
 
 shadowJar {
-    archiveFileName = "aircrack.jar"
+    //archiveFileName = "aircrack.jar"
 }
 
 dependencies {

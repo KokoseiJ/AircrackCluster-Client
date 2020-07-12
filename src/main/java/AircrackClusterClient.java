@@ -101,7 +101,8 @@ public class AircrackClusterClient {
 
     public static class StreamGetter extends Thread {
         InputStream inputStream;
-        StringBuilder resBuilder;
+        ByteArrayOutputStream byteStream;
+        //StringBuilder resBuilder;
 
         public StreamGetter(InputStream inputStream) {
             this.inputStream = inputStream;
@@ -109,12 +110,18 @@ public class AircrackClusterClient {
 
         public void run() {
             try {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(this.inputStream));
-                resBuilder = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    resBuilder.append(line);
-                    System.out.println(line);
+                byteStream = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int readBytes;
+                //BufferedReader reader = new BufferedReader(new InputStreamReader(this.inputStream));
+                //resBuilder = new StringBuilder();
+                //String line;
+                //System.out.println("게터: 읽기시작");
+                while ((readBytes = this.inputStream.read(buffer)) != -1) {
+                    //System.out.println("게터: 바이트스트림에 박기");
+                    byteStream.write(buffer, 0, readBytes);
+                    //System.out.println("게터: 인풋스트림에서 읽기");
+                    System.out.print(new String(buffer, 0, readBytes));
                 }
             } catch(IOException e) {
                 e.printStackTrace();
@@ -122,7 +129,7 @@ public class AircrackClusterClient {
         }
 
         public String getResult() {
-            return resBuilder.toString();
+            return byteStream.toString();
         }
     }
 
@@ -163,7 +170,8 @@ public class AircrackClusterClient {
 
     public static String runAircrackWithDataFromPipe(Socket socket, Process aircrack)
             throws IOException, InterruptedException {
-        BufferedReader socketReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        InputStream socketStream = socket.getInputStream();
+        BufferedReader socketReader = new BufferedReader(new InputStreamReader(socketStream));
         PrintWriter socketWriter = new PrintWriter(socket.getOutputStream(), true);
         PrintWriter aircrackWriter = new PrintWriter(aircrack.getOutputStream(), true);
         Pattern foundPattern, notFoundPattern;
@@ -186,15 +194,19 @@ public class AircrackClusterClient {
         socketWriter.println("DICT_READY OK");
 
         for (i = 0; i < lines; i++) {
+            //System.out.println("메인메소드: 소켓에서 받기");
             buffer = socketReader.readLine();
+            //System.out.print(buffer + "\r");
+            //System.out.println("메인메소드: 에어크랙에 쓰기");
             aircrackWriter.println(buffer);
-            //System.out.println(buffer);
         }
         aircrackWriter.close();
+        //System.out.println("\nbuffer closed");
 
         aircrack.waitFor();
 
         result = thread.getResult();
+        //result = "KEY FOUND! [ 고양이키우고싶노 ]";
 
         System.out.println(result);
 
@@ -304,10 +316,17 @@ public class AircrackClusterClient {
             return;
         }
 
+        int count = 0;
+
         do {
+            count++;
+            System.out.print("Trying " + count + "... ");
             aircrack = runAircrack(capFile, bssId, essId);
             password = runAircrackWithDataFromPipe(socket, aircrack);
-            System.out.println(password);
+            if(password == null)
+                System.out.println("Failed.");
+            else
+                System.out.println("Success!\nPassword: " + password);
         } while(!sendKey(socket, password));
         socket.close();
     }
