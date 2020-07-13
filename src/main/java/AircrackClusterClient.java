@@ -278,17 +278,17 @@ public class AircrackClusterClient {
             return;
         }
 
-        System.out.println("All requirements are transferred Successfully!\n");
+        System.out.println("All requirements are transferred Successfully!");
+        System.out.println("Receiving dictionary file...\n");
 
         int count = 0;
         do {
             count++;
-            System.out.println("Receiving dictionary file...");
             System.out.print("Trying " + count + "... ");
             aircrack = runAircrack(capFile, bssId, essId);
             password = runAircrackWithDataFromPipe(socket, aircrack);
             if(password == null)
-                System.out.println("Result: failed.\n");
+                System.out.println("failed.\n");
             else
                 System.out.println("Success!\nPassword: " + password + "\n");
         } while(!sendKey(socket, password));
