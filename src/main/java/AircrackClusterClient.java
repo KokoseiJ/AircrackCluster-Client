@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AircrackClusterClient {
-    public static double runAircrackBench() throws IOException, InterruptedException {
+    public static double runAircrackBench(StringBuilder prefixArgs) throws IOException, InterruptedException {
         Process aircrack;
         InputStream aircrackInputStream;
         byte[] aircrackBenchResultBytes;
@@ -14,15 +14,13 @@ public class AircrackClusterClient {
         String[] aircrackResultSplit;
         String aircrackLastResult;
 
-        if(System.getProperty("os.name").equalsIgnoreCase("Linux"))
-            aircrack = new ProcessBuilder("aircrack-ng", "-S", "-Z", "5").start();
-        else aircrack = new ProcessBuilder("C:\\aircrack-ng\\bin\\aircrack-ng.exe", "-S", "-Z", "5").start();
+        aircrack = new ProcessBuilder("aircrack-ng", prefixArgs.toString(), "-S", "-Z", "5").start();
 
         aircrackInputStream = aircrack.getInputStream();
         aircrack.waitFor();
 
         aircrackBenchResultBytes = new byte[aircrackInputStream.available()];
-        if(aircrackInputStream.read(aircrackBenchResultBytes) == -1) return -1;
+        if (aircrackInputStream.read(aircrackBenchResultBytes) == -1) return -1;
         aircrackBenchResult = new String(aircrackBenchResultBytes);
         aircrackResultSplit = aircrackBenchResult.split("k/s\\s+\r");
         aircrackLastResult = aircrackResultSplit[aircrackResultSplit.length - 2];
@@ -35,9 +33,8 @@ public class AircrackClusterClient {
         BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
         writer.println("BENCH OK," + benchResult.intValue());
-        System.out.println("Sent bench, waiting for the response...");
+        System.out.print("Sending bench result, waiting for the response... ");
         String serverResponse = reader.readLine();
-        System.out.println(serverResponse);
         return serverResponse.equals("BENCH_RESULT OK");
     }
 
@@ -50,37 +47,35 @@ public class AircrackClusterClient {
         FileOutputStream fileOutputStream = new FileOutputStream(file);
 
         long fileLength;
-        int receivedSize = 0;
+        int receivedSize;
         long receivedSizeAll = 0;
         byte[] buffer = new byte[4096];
 
-        System.out.println("Sending FILE_BYTE OK");
         writer.println("FILE_BYTE OK");
         fileLength = reader.nextLong();
-        System.out.println("FileSize: " + fileLength + "bytes.");
+        System.out.println("FileSize: " + fileLength + "byte.");
         writer.println("FILE_READY OK");
 
-        while(receivedSizeAll < fileLength) {
-            if((receivedSize = socketInputStream.read(buffer)) == -1) break;
+        while (receivedSizeAll < fileLength) {
+            if ((receivedSize = socketInputStream.read(buffer)) == -1) break;
             receivedSizeAll += receivedSize;
             fileOutputStream.write(buffer, 0, receivedSize);
         }
         fileOutputStream.close();
 
-        if(receivedSizeAll != fileLength) {
+        if (receivedSizeAll != fileLength) {
             writer.println("FILE_RECV FAIL");
             System.err.print("Failed to receive file. File has been corrupted. ");
-            if(reader.next().equals("RETRY")) {
+            if (reader.next().equals("RETRY")) {
                 System.err.println("Retrying...");
-                if(!file.delete()) System.err.println("Warning: Failed to delete file.");
+                if (!file.delete()) System.err.println("Warning: Failed to delete file.");
                 return receiveFile(filename, socket);
-            }
-            else if(reader.next().equals("DROP"))
+            } else if (reader.next().equals("DROP"))
                 return null;
         }
         writer.println("FILE_RECV OK");
 
-        System.out.println("Captured file successfully received!");
+        System.out.println("Captured file successfully received!\n");
         return file;
     }
 
@@ -90,10 +85,7 @@ public class AircrackClusterClient {
 
         String receivedValue;
 
-        System.out.println("Sending INF_READY OK");
         writer.println("INF_READY OK");
-        System.out.println("Getting info");
-
         receivedValue = reader.readLine();
 
         return receivedValue.split(",");
@@ -102,10 +94,11 @@ public class AircrackClusterClient {
     public static class StreamGetter extends Thread {
         InputStream inputStream;
         ByteArrayOutputStream byteStream;
-        //StringBuilder resBuilder;
+        boolean isEnableStatusOutput;
 
-        public StreamGetter(InputStream inputStream) {
+        public StreamGetter(InputStream inputStream, boolean isEnableStatusOutput) {
             this.inputStream = inputStream;
+            this.isEnableStatusOutput = isEnableStatusOutput;
         }
 
         public void run() {
@@ -113,17 +106,11 @@ public class AircrackClusterClient {
                 byteStream = new ByteArrayOutputStream();
                 byte[] buffer = new byte[4096];
                 int readBytes;
-                //BufferedReader reader = new BufferedReader(new InputStreamReader(this.inputStream));
-                //resBuilder = new StringBuilder();
-                //String line;
-                //System.out.println("게터: 읽기시작");
                 while ((readBytes = this.inputStream.read(buffer)) != -1) {
-                    //System.out.println("게터: 바이트스트림에 박기");
                     byteStream.write(buffer, 0, readBytes);
-                    //System.out.println("게터: 인풋스트림에서 읽기");
-                    //System.out.print(new String(buffer, 0, readBytes));
+                    if (isEnableStatusOutput) System.out.println(new String(buffer, 0, readBytes));
                 }
-            } catch(IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
@@ -133,48 +120,28 @@ public class AircrackClusterClient {
         }
     }
 
-    public static Process runAircrack(File capFile, String bssId, String essId)
+    public static Process runAircrack(File capFile, String bssId, String essId, StringBuilder prefixArgs)
             throws IOException {
-        String aircrackPath;
         Process aircrack;
 
-        if(System.getProperty("os.name").equalsIgnoreCase("Linux"))
-            aircrackPath = "aircrack-ng";
-        else aircrackPath = "C:\\aircrack-ng\\bin\\aircrack-ng.exe";
         aircrack = new ProcessBuilder(
-                aircrackPath,
+                "aircrack-ng",
+                prefixArgs.toString(),
                 "-b", bssId,
                 "-e", essId,
                 "-w", "-",
                 capFile.getAbsolutePath()
         ).start();
-
-        System.out.println("Aircrack started");
-
         return aircrack;
-
-        /*
-        foundPattern = Pattern.compile("KEY FOUND! \\[ (.+?) ]");
-        notFoundPattern = Pattern.compile("KEY NOT FOUND");
-
-        stringBuffer = new StringBuffer();
-        bufferedReader = new BufferedReader(new InputStreamReader(aircrack.getInputStream()));
-
-        while((buffer = bufferedReader.readLine()) != null) {
-            stringBuffer.append(buffer);
-        }
-
-        return null;
-        */
     }
 
-    public static String runAircrackWithDataFromPipe(Socket socket, Process aircrack)
+    public static String runAircrackWithDataFromPipe(Socket socket, Process aircrack, boolean isEnableStatusOutput)
             throws IOException, InterruptedException {
         InputStream socketStream = socket.getInputStream();
         BufferedReader socketReader = new BufferedReader(new InputStreamReader(socketStream));
         PrintWriter socketWriter = new PrintWriter(socket.getOutputStream(), true);
         PrintWriter aircrackWriter = new PrintWriter(aircrack.getOutputStream(), true);
-        Pattern foundPattern, notFoundPattern;
+        Pattern foundPattern;
         Matcher matcher;
         StreamGetter thread;
         String buffer, result;
@@ -182,43 +149,33 @@ public class AircrackClusterClient {
 
         foundPattern = Pattern.compile(".*?KEY FOUND! \\[ (.*?) ].*?");
 
-        System.out.println("dict_size ok");
         socketWriter.println("DICT_SIZE OK");
         lines = Integer.parseInt(socketReader.readLine());
 
-        System.out.println(lines);
-
-        thread = new StreamGetter(aircrack.getInputStream());
+        thread = new StreamGetter(aircrack.getInputStream(), isEnableStatusOutput);
         thread.start();
 
         socketWriter.println("DICT_READY OK");
 
         for (i = 0; i < lines; i++) {
-            //System.out.println("메인메소드: 소켓에서 받기");
             buffer = socketReader.readLine();
-            //System.out.print(buffer + "\r");
-            //System.out.println("메인메소드: 에어크랙에 쓰기");
             aircrackWriter.println(buffer);
         }
         aircrackWriter.close();
-        //System.out.println("\nbuffer closed");
 
         aircrack.waitFor();
 
         result = thread.getResult();
-        //result = "KEY FOUND! [ 고양이키우고싶노 ]";
-
-        System.out.println(result);
 
         matcher = foundPattern.matcher(result);
-        if(matcher.matches()) return matcher.group(1);
+        if (matcher.matches()) return matcher.group(1);
         else return null;
     }
 
     public static boolean sendKey(Socket socket, String key) throws IOException {
         PrintWriter socketWriter = new PrintWriter(socket.getOutputStream(), true);
 
-        if(key == null) {
+        if (key == null) {
             socketWriter.println("AIRCRACK_RESULT FAIL");
             return false;
         } else {
@@ -228,37 +185,57 @@ public class AircrackClusterClient {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
+        Socket socket;
         InetAddress socketAddr;
         int socketPort;
-        Socket socket;
+
+        boolean isEnableStatusOutput = false;
 
         double benchResult;
 
         File capFile;
 
-        String[] ids;
-        String bssId, essId;
+        String[] ids, newArgs = new String[2];
+        String bssId, essId, password;
+        StringBuilder prefixArgs = new StringBuilder();
 
         Process aircrack;
 
-        String password;
+        if(!System.getProperty("os.name").equalsIgnoreCase("Linux")) {
+            System.out.println("This operating system is not supported. Exit.");
+            System.exit(0);
+        }
+
+        int argsCnt = 0;
+        for (String arg : args) {
+            if (!arg.startsWith("-")) {
+                newArgs[argsCnt++] = arg;
+            } else {
+                if (arg.equalsIgnoreCase("-V")) {
+                    isEnableStatusOutput = true;
+                    continue;
+                }
+                prefixArgs.append(arg).append(" ");
+            }
+        }
 
         try {
-            socketAddr = InetAddress.getByName(args[0]);
-            if(args.length == 1)
+            socketAddr = InetAddress.getByName(newArgs[0]);
+            if (newArgs[1] == null)
                 socketPort = 6974;
             else
-                socketPort = Integer.parseInt(args[1]);
-        } catch(Exception e) {
+                socketPort = Integer.parseInt(newArgs[1]);
+        } catch (Exception e) {
             System.err.println("Failed to parse arguments.");
             e.printStackTrace();
             System.exit(1);
             return;
         }
+
         try {
-            System.out.println("Creating socket...");
+            System.out.println("Creating socket...\n");
             socket = new Socket(socketAddr, socketPort);
-        } catch(IOException e) {
+        } catch (IOException e) {
             System.err.println("Failed to create a socket.");
             e.printStackTrace();
             System.exit(1);
@@ -266,10 +243,10 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Running bench...");
-            benchResult = runAircrackBench();
-            System.out.println(benchResult);
-        } catch(IOException | InterruptedException e) {
+            System.out.print("Running bench... ");
+            benchResult = runAircrackBench(prefixArgs);
+            System.out.println(benchResult + " k/s");
+        } catch (IOException | InterruptedException e) {
             System.err.println("Failed to get Benchmark result.");
             e.printStackTrace();
             System.exit(1);
@@ -277,13 +254,13 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Sending bench result...");
             if (!sendBenchResult(socket, benchResult)) {
                 System.err.println("Server has returned unexpected value.");
                 System.exit(1);
                 return;
             }
-        } catch(IOException e) {
+            System.out.println("OK\n");
+        } catch (IOException e) {
             System.err.println("An error has been occurred while sending Benchmark result.");
             e.printStackTrace();
             System.exit(1);
@@ -292,11 +269,11 @@ public class AircrackClusterClient {
 
         try {
             System.out.println("Receiving capfile...");
-            if((capFile = (receiveFile("capFile.cap", socket))) == null) {
+            if ((capFile = (receiveFile("capFile.cap", socket))) == null) {
                 System.err.println("Server has refused to retry. Terminating program...");
                 System.exit(1);
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
             System.err.println("An error has been occurred while receiving file.");
             e.printStackTrace();
             System.exit(1);
@@ -304,30 +281,32 @@ public class AircrackClusterClient {
         }
 
         try {
-            System.out.println("Receiving bss/essid...");
+            System.out.println("Receiving AP information...");
             ids = receiveInfo(socket);
             bssId = ids[0];
             essId = ids[1];
-            System.out.println(bssId + ", " + essId);
-        } catch(IOException e) {
+            System.out.println("BSSID: " + bssId + ", " + "ESSID: " + essId + "\n");
+        } catch (IOException e) {
             System.err.println("An error has been occurred while receiving info.");
             e.printStackTrace();
             System.exit(1);
             return;
         }
 
-        int count = 0;
+        System.out.println("All requirements are transferred Successfully!");
+        System.out.println("Receiving dictionary file...\n");
 
+        int count = 0;
         do {
             count++;
             System.out.print("Trying " + count + "... ");
-            aircrack = runAircrack(capFile, bssId, essId);
-            password = runAircrackWithDataFromPipe(socket, aircrack);
-            if(password == null)
-                System.out.println("Failed.");
+            aircrack = runAircrack(capFile, bssId, essId, prefixArgs);
+            password = runAircrackWithDataFromPipe(socket, aircrack, isEnableStatusOutput);
+            if (password == null)
+                System.out.println("failed.\n");
             else
-                System.out.println("Success!\nPassword: " + password);
-        } while(!sendKey(socket, password));
+                System.out.println("Success!\nPassword: " + password + "\n");
+        } while (!sendKey(socket, password));
         socket.close();
     }
 }
