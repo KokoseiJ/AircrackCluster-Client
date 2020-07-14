@@ -10,10 +10,8 @@
 7. `INF_READY OK` 보내고 BSSID,ESSID 스트링 받기
 8. `INF_RECV OK` 보내기
 
-9. `FILE_BYTE OK` 보내고 바이트수 받기
-10. `FILE_READY OK` 보내고 사전파일 받기
-11. 바이트 일치하면 `FILE_RECV OK` 보내기
-11-1. `RETRY` 보낼 시 9번부터, `DROP` 받으면 프로그램 죽여버리기
+9. `DICT_SIZE OK` 보내고 줄수 받기
+10. `DICT_READY OK` 보내고 줄수만큼 좆 받기
 
-12. 존1나게 돌리기
-13. 
+11. `AIRCRACK_RESULT FAIL` `AIRCRACK_RESULT OK,키` 이런식으로 대충 보내주기
+11-1 FAIL시 9번부터 다시
